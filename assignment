@@ -1,0 +1,92 @@
+
+? Setup a lambda that gets triggered on file upload to the the s3 bucket 
+-----------------------------------------------------------------------
+provider "aws" {
+region = "eu-west-1"
+access_key  = ""
+secret_key  = ""
+}
+{Creating s3 resource for invoking to lambda function}
+
+resource "aws_s3_bucket" "bucket" {
+bucket = "my-test-bucket-eu-west-1"
+acl    = "private"
+tags = {
+Name        = "My bucket"
+Environment = "Dev"
+}
+}  #Adding S3 bucket as trigger to my lambda and giving the    permissions#
+
+resource "aws_s3_bucket_notification" "aws-lambda-trigger" {
+bucket = "${aws_s3_bucket.bucket.id}"
+lambda_function {
+lambda_function_arn = "${aws_lambda_function.test_lambda.arn}"
+events              = ["s3:ObjectCreated:*"]
+filter_prefix       = "file-prefix"
+filter_suffix       = "file-extension"
+}
+}
+resource "aws_lambda_permission" "test" {
+statement_id  = "AllowS3Invoke"
+action        = "lambda:InvokeFunction"
+function_name = "${aws_lambda_function.test_lambda.function_name}"
+principal = "s3.amazonaws.com"
+source_arn = "arn:aws:s3:::${aws_s3_bucket.bucket.id}"
+}
+---------------------------------------------------------------------------------------------------------
+
+using Dynamodb
+----------------------------------------------------------------------
+resource "aws_lambda_event_source_mapping" "example" {
+  event_source_arn  = aws_dynamodb_table.example.stream_arn
+  function_name     = aws_lambda_function.example.arn
+  starting_position = "LATEST"
+}
+
+Terraform github actions (push,pull) 
+-----------------------------------------------
+ame: 'Terraform Plan'
+on: [push, pull_request]
+defaults:
+      run:
+        shell: bash
+
+jobs:
+  terraform:
+    name: 'Terraform'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v2
+
+      - name: 'Terraform Setup'
+        uses: hashicorp/setup-terraform@v1
+        with:
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: 'Terraform Init'
+        run: terraform init
+
+      - name: 'Terraform Format'
+        run: terraform fmt -check
+
+      - name: 'Terraform Plan'
+        run: terraform plan
+
+
+-------------------------------------------------------------------------
+first create touch main.tf
+after create git repository
+provider "aws" {
+region = "eu-west-1"
+access_key  = ""
+secret_key  = ""
+git clone https://github.com/YOUR-USER-NAME/learn-terraform-github-action
+- name: Terraform Init
+  id: init
+  run: terraform init
+   git add main.tf
+   git commit -m 'Point backend to correct TFC org and workspace'
+   git push
+
